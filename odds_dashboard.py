@@ -1,4 +1,3 @@
-
 import streamlit as st
 import requests
 import pandas as pd
@@ -9,11 +8,26 @@ BOOKMAKERS = ["draftkings", "betmgm"]
 REGIONS = "us"
 MARKETS = "moneyline"
 
-# Add a list of popular teams for high-volume filtering
+# Add a list of popular teams for high-volume filtering (NFL + NBA + MLB)
 POPULAR_TEAMS = [
+    # NFL
     "Dallas Cowboys", "Kansas City Chiefs", "San Francisco 49ers",
     "Philadelphia Eagles", "Green Bay Packers", "New England Patriots",
-    "Buffalo Bills", "Pittsburgh Steelers", "New York Giants", "Chicago Bears"
+    "Buffalo Bills", "Pittsburgh Steelers", "New York Giants", "Chicago Bears",
+    # NBA
+    "Boston Celtics", "Brooklyn Nets", "New York Knicks", "Philadelphia 76ers", "Toronto Raptors",
+    "Chicago Bulls", "Cleveland Cavaliers", "Detroit Pistons", "Indiana Pacers", "Milwaukee Bucks",
+    "Atlanta Hawks", "Charlotte Hornets", "Miami Heat", "Orlando Magic", "Washington Wizards",
+    "Denver Nuggets", "Minnesota Timberwolves", "Oklahoma City Thunder", "Portland Trail Blazers", "Utah Jazz",
+    "Golden State Warriors", "LA Clippers", "Los Angeles Lakers", "Phoenix Suns", "Sacramento Kings",
+    "Dallas Mavericks", "Houston Rockets", "Memphis Grizzlies", "New Orleans Pelicans", "San Antonio Spurs",
+    # MLB
+    "New York Yankees", "Boston Red Sox", "Toronto Blue Jays", "Baltimore Orioles", "Tampa Bay Rays",
+    "Chicago White Sox", "Cleveland Guardians", "Detroit Tigers", "Kansas City Royals", "Minnesota Twins",
+    "Houston Astros", "Los Angeles Angels", "Oakland Athletics", "Seattle Mariners", "Texas Rangers",
+    "Atlanta Braves", "Miami Marlins", "New York Mets", "Philadelphia Phillies", "Washington Nationals",
+    "Chicago Cubs", "Cincinnati Reds", "Milwaukee Brewers", "Pittsburgh Pirates", "St. Louis Cardinals",
+    "Arizona Diamondbacks", "Colorado Rockies", "Los Angeles Dodgers", "San Diego Padres", "San Francisco Giants"
 ]
 
 @st.cache_data(ttl=60)
@@ -66,7 +80,8 @@ def find_best_lines(data):
                     "Total Implied Probability": round(total_prob, 4),
                     "Efficiency Score (1 = zero vig)": round(efficiency, 4)
                 })
-    return pd.DataFrame(sorted(rows, key=lambda x: x["Total Implied Probability"]))
+    df = pd.DataFrame(rows)
+    return df if not df.empty else pd.DataFrame(columns=["Matchup", "Team A", "Odds A", "Team B", "Odds B", "Total Implied Probability", "Efficiency Score (1 = zero vig)"])
 
 # Streamlit UI
 st.set_page_config(page_title="Efficient Betting Lines", layout="wide")
@@ -85,19 +100,23 @@ with thresh_col:
 
 with table_col:
     st.markdown("### Top Popular Game Opportunities")
-    filtered_df = df[df["Total Implied Probability"] <= threshold]
-    st.dataframe(filtered_df, use_container_width=True)
+    if not df.empty and "Total Implied Probability" in df.columns:
+        filtered_df = df[df["Total Implied Probability"] <= threshold]
+        st.dataframe(filtered_df, use_container_width=True)
+    else:
+        st.info("No matchups found or data unavailable.")
 
 st.markdown("---")
 
 # Highlight best matches visually
-for _, row in filtered_df.iterrows():
-    st.markdown(f"""
-    #### {row['Matchup']}
-    - {row['Team A']} @ **{row['Odds A']}**  
-    - {row['Team B']} @ **{row['Odds B']}**  
-    - Efficiency Score: `{row['Efficiency Score (1 = zero vig)']}`
-    - Total Implied Probability: `{row['Total Implied Probability']}`
-    """)
+if not df.empty and "Total Implied Probability" in df.columns:
+    for _, row in df[df["Total Implied Probability"] <= threshold].iterrows():
+        st.markdown(f"""
+        #### {row['Matchup']}
+        - {row['Team A']} @ **{row['Odds A']}**  
+        - {row['Team B']} @ **{row['Odds B']}**  
+        - Efficiency Score: `{row['Efficiency Score (1 = zero vig)']}`
+        - Total Implied Probability: `{row['Total Implied Probability']}`
+        """)
 
 st.caption("Updates every 60 seconds. Data via The Odds API.")
